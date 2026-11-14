@@ -1,0 +1,62 @@
+package: supply_planning
+version: 1.0.0
+status: certified
+owner: supply-planning-data@demo-co.com
+group: Planning
+description: Daily inventory position and safety stock by SKU and DC.
+
+concepts:
+  InventorySnapshot:
+    description: End-of-day inventory for one SKU at one DC.
+    fact: gold.fact_inventory_daily
+    grain: [snapshot_date_key, sku_id, location_id]
+    relations:
+      - {rel: for_product, to: Product,   key: sku_id,            level: sku}
+      - {rel: held_at,     to: Warehouse, key: location_id,       level: location}
+      - {rel: as_of,       to: Date,      key: snapshot_date_key, level: day}
+    measures:
+      on_hand_units:
+        expr: SUM(on_hand_units)
+        additivity: semi_additive      # never sum across time
+        time_agg: last                 # take the last day in the period
+        unit: units
+        category: Inventory
+        description: Units on hand at end of period.
+        synonyms: [inventory, stock on hand, closing stock]
+      safety_stock_units:
+        expr: SUM(safety_stock_units)
+        additivity: semi_additive
+        time_agg: last
+        unit: units
+        category: Inventory
+        description: Safety stock target at end of period.
+        synonyms: [safety stock]
+      below_safety_days:
+        expr: SUM(CASE WHEN on_hand_units < safety_stock_units THEN 1 ELSE 0 END)
+        additivity: additive
+        unit: SKU-DC-days
+        category: Inventory risk
+        description: Count of SKU-DC-days that ended below safety stock.
+        synonyms: [stock risk days]
+
+derived_metrics:
+  stock_to_safety_ratio:
+    numerator: on_hand_units
+    denominator: safety_stock_units
+    unit: ratio
+    category: Inventory risk
+    description: End-of-period on-hand divided by safety stock; below 1 means at risk.
+
+business_rules:
+  - Inventory is a snapshot; monthly inventory means the last day of the month, never a sum of days.
+
+golden_questions:
+  - question: On-hand by region by month
+    request: {metrics: [on_hand_units], by: [location.region, calendar.fiscal_month]}
+    expect: {legs: 1}
+  - question: Days below safety stock by category
+    request: {metrics: [below_safety_days], by: [product.category]}
+    expect: {legs: 1}
+  - question: Stock to safety ratio by DC
+    request: {metrics: [stock_to_safety_ratio], by: [location.location]}
+    expect: {legs: 1}

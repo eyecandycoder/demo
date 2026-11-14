@@ -1,0 +1,61 @@
+package: service
+version: 1.0.0
+status: certified
+owner: customer-service-data@demo-co.com
+group: Customer
+description: Customer service tickets raised against products.
+
+concepts:
+  ServiceTicket:
+    description: One customer service ticket.
+    fact: gold.fact_service_ticket
+    grain: [ticket_id]
+    relations:
+      - {rel: about_product, to: Product,  key: sku_id,          level: sku}
+      - {rel: raised_by,     to: Customer, key: customer_id,     level: customer}
+      - {rel: raised_on,     to: Date,     key: ticket_date_key, level: day}
+      # Note: no location. Service cannot be sliced by region or DC.
+    measures:
+      tickets:
+        expr: COUNT(*)
+        additivity: additive
+        unit: tickets
+        category: Volume
+        description: Number of service tickets raised.
+        synonyms: [complaints, service tickets]
+      resolution_hours:
+        expr: SUM(resolution_hours)
+        additivity: additive
+        unit: hours
+        category: Resolution
+        description: Total hours to resolve tickets.
+      late_delivery_tickets:
+        expr: SUM(CASE WHEN issue_type = 'Late delivery' THEN 1 ELSE 0 END)
+        additivity: additive
+        unit: tickets
+        category: Volume
+        description: Tickets whose issue type is late delivery.
+        synonyms: [late delivery complaints]
+
+derived_metrics:
+  avg_resolution_hours:
+    numerator: resolution_hours
+    denominator: tickets
+    unit: hours
+    category: Resolution
+    description: Average hours to resolve a ticket.
+    synonyms: [average resolution time]
+
+business_rules:
+  - Tickets are not linked to a DC or region; offer product or customer segment views instead.
+
+golden_questions:
+  - question: Tickets by category by month
+    request: {metrics: [tickets], by: [product.category, calendar.fiscal_month]}
+    expect: {legs: 1}
+  - question: Average resolution by segment
+    request: {metrics: [avg_resolution_hours], by: [customer.segment]}
+    expect: {legs: 1}
+  - question: Tickets by region is refused
+    request: {metrics: [tickets], by: [location.region]}
+    expect: {error: no_common_grain}

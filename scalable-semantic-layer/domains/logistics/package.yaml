@@ -1,0 +1,86 @@
+package: logistics
+version: 1.0.0
+status: certified
+owner: logistics-data@demo-co.com
+group: Fulfilment
+description: Outbound shipments from DCs to customers, with carrier and delivery performance.
+
+local_entities:                 # dimensions only this domain has (cannot be used cross-domain)
+  carrier:
+    concept: Carrier
+    description: Transport provider.
+    table: gold.dim_carrier
+    key: carrier_id
+    levels:
+      - {name: carrier,        column: carrier_name,   label: Carrier}
+      - {name: transport_mode, column: transport_mode, label: Transport mode}
+
+concepts:
+  Shipment:
+    description: One shipment of an order line from a DC.
+    fact: gold.fact_shipment
+    grain: [shipment_id]
+    relations:
+      - {rel: for_product,  to: Product,   key: sku_id,                level: sku}
+      - {rel: ships_from,   to: Warehouse, key: ship_from_location_id, level: location}
+      - {rel: delivered_to, to: Customer,  key: customer_id,           level: customer}
+      - {rel: carried_by,   to: Carrier,   key: carrier_id,            level: carrier}
+      - {rel: shipped_on,   to: Date,      key: ship_date_key,         level: day}
+      # Known business relationship, but fact-to-fact: recorded in the ontology, NEVER joined.
+      - {rel: fulfills,     to: Order,     key: order_line_id,         joinable: false}
+    measures:
+      shipments:
+        expr: COUNT(*)
+        additivity: additive
+        unit: shipments
+        category: Volume
+        description: Number of shipments.
+      on_time_shipments:
+        expr: SUM(on_time_flag)
+        additivity: additive
+        unit: shipments
+        category: Delivery performance
+        description: Shipments delivered on or before the requested date.
+      shipped_units:
+        expr: SUM(shipped_qty)
+        additivity: additive
+        unit: units
+        category: Volume
+        description: Units shipped.
+      freight_cost:
+        expr: SUM(freight_cost)
+        additivity: additive
+        unit: INR
+        category: Cost
+        description: Freight cost charged by carriers.
+
+derived_metrics:
+  otd_pct:
+    numerator: on_time_shipments
+    denominator: shipments
+    unit: pct
+    category: Delivery performance
+    description: On-time delivery - share of shipments delivered by the customer requested date.
+    synonyms: [OTD, on-time delivery, on time delivery, delivery performance]
+  freight_cost_per_unit:
+    numerator: freight_cost
+    denominator: shipped_units
+    unit: INR per unit
+    category: Cost
+    description: Freight cost per unit shipped.
+    synonyms: [cost to serve per unit]
+
+business_rules:
+  - A shipment is on time when it is delivered on or before the customer requested date, not the promised date.
+  - Carrier and transport mode exist only in logistics; questions combining carrier with other domains are not supported.
+
+golden_questions:
+  - question: OTD by region by month
+    request: {metrics: [OTD], by: [location.region, calendar.fiscal_month]}
+    expect: {legs: 1}
+  - question: OTD by carrier
+    request: {metrics: [otd_pct], by: [carrier.carrier]}
+    expect: {legs: 1}
+  - question: Freight cost per unit by transport mode
+    request: {metrics: [freight_cost_per_unit], by: [carrier.transport_mode]}
+    expect: {legs: 1}

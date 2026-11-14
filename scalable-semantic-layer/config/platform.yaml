@@ -1,0 +1,14 @@
+# Platform-level settings. Owned by the platform team, not by domains.
+catalog: sc_demo            # Unity Catalog catalog (ignored by the local SQLite runner)
+schemas:
+  gold: gold                # conformed dimensions + domain facts
+  semantic: semantic        # generated metric views + helper views
+  registry: semantic_registry   # taxonomy / ontology / linkage tables for the agent
+
+quality_gates:
+  min_key_match_rate: 0.98          # every bound relation must match its dimension at >= 98%
+  min_golden_questions_certified: 3 # a package needs this many golden questions to be 'certified'
+
+# Words that must never appear in business_rules / agent notes. Definitions belong in measures,
+# not in prose the LLM reads, otherwise the two drift apart.
+forbidden_in_business_rules: ["SUM(", "COUNT(", "AVG(", "MAX(", "MIN(", " / NULLIF", "SELECT "]

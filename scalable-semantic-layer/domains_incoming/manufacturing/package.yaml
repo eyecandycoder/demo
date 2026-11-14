@@ -1,0 +1,89 @@
+# NEW DOMAIN. Onboarding = move this folder into domains/ and run the pipeline.
+# No agent, skill, planner or SQL code changes are needed.
+package: manufacturing
+version: 0.1.0
+status: draft
+owner: manufacturing-data@demo-co.com
+group: Make
+description: Daily production output, plan attainment and scrap by plant, machine and material.
+
+local_entities:
+  machine:
+    concept: Machine
+    description: Production machine on a line.
+    table: gold.dim_machine
+    key: machine_id
+    levels:
+      - {name: machine,         column: machine_id, label: Machine}
+      - {name: production_line, column: line_name,  label: Production line}
+
+concepts:
+  ProductionRun:
+    description: Daily output of one material on one machine at one plant.
+    fact: gold.fact_production
+    grain: [prod_date_key, plant_id, material_code, machine_id]
+    relations:
+      # Manufacturing speaks material_code, not SKU. A governed crosswalk maps it.
+      - rel: produces
+        to: Product
+        key: material_code
+        level: sku
+        crosswalk: {table: gold.xref_material_sku, from_key: material_code, to_key: sku_id}
+      - {rel: produced_at, to: Plant,   key: plant_id,      level: location}
+      - {rel: produced_on, to: Date,    key: prod_date_key, level: day}
+      - {rel: runs_on,     to: Machine, key: machine_id,    level: machine}
+    measures:
+      planned_units:
+        expr: SUM(planned_qty)
+        additivity: additive
+        unit: units
+        category: Output
+        description: Units planned for production.
+      good_units:
+        expr: SUM(good_qty)
+        additivity: additive
+        unit: units
+        category: Output
+        description: Good units produced, excluding scrap.
+        synonyms: [production, output, production volume]
+      scrap_units:
+        expr: SUM(scrap_qty)
+        additivity: additive
+        unit: units
+        category: Quality
+        description: Units scrapped.
+      gross_units:
+        expr: SUM(good_qty + scrap_qty)
+        additivity: additive
+        unit: units
+        category: Quality
+        description: Good plus scrapped units.
+
+derived_metrics:
+  plan_attainment:
+    numerator: good_units
+    denominator: planned_units
+    unit: pct
+    category: Output
+    description: Good units as a share of planned units.
+    synonyms: [attainment, production attainment]
+  scrap_rate:
+    numerator: scrap_units
+    denominator: gross_units
+    unit: pct
+    category: Quality
+    description: Scrapped units as a share of gross units.
+
+business_rules:
+  - Production means good units unless the user explicitly asks for gross output.
+
+golden_questions:
+  - question: Plan attainment by plant by month
+    request: {metrics: [plan_attainment], by: [location.location, calendar.fiscal_month]}
+    expect: {legs: 1}
+  - question: Scrap rate by product family
+    request: {metrics: [scrap_rate], by: [product.product_family]}
+    expect: {legs: 1}
+  - question: Scrap by production line
+    request: {metrics: [scrap_units], by: [machine.production_line]}
+    expect: {legs: 1}

@@ -1,0 +1,55 @@
+# TAXONOMY OF CONFORMED ENTITIES
+# What exists, and how each entity breaks down. Levels are ordered FINEST -> COARSEST.
+# Every domain links to these through its package; domains never join to each other directly.
+entities:
+  product:
+    description: Sellable product identified by SKU.
+    owner: master-data@demo-co.com
+    table: gold.dim_product
+    key: sku_id
+    levels:
+      - {name: sku,            column: sku_id,         label: SKU}
+      - {name: product_family, column: product_family, label: Product family}
+      - {name: category,       column: category,       label: Category}
+      - {name: business_unit,  column: business_unit,  label: Business unit}
+
+  location:
+    description: Any physical site - distribution centre (DC) or plant.
+    owner: supply-chain-ops@demo-co.com
+    table: gold.dim_location
+    key: location_id
+    levels:
+      - {name: location, column: location_id, label: Site}
+      - {name: city,     column: city,        label: City}
+      - {name: region,   column: region,      label: Region}
+      - {name: country,  column: country,     label: Country}
+
+  customer:
+    description: Ship-to customer account.
+    owner: master-data@demo-co.com
+    table: gold.dim_customer
+    key: customer_id
+    levels:
+      - {name: customer, column: customer_id, label: Customer}
+      - {name: segment,  column: segment,     label: Customer segment}
+
+  channel:
+    description: Route to market.
+    owner: commercial-data@demo-co.com
+    table: gold.dim_channel
+    key: channel_id
+    levels:
+      - {name: channel,       column: channel_name,  label: Channel}
+      - {name: channel_group, column: channel_group, label: Channel group}
+
+  calendar:
+    description: Company fiscal calendar (Indian fiscal year, April-March).
+    owner: finance-data@demo-co.com
+    table: gold.dim_calendar
+    key: date_key
+    levels:
+      - {name: day,            column: date_key,       label: Day}
+      - {name: fiscal_week,    column: fiscal_week,    label: Fiscal week}
+      - {name: fiscal_month,   column: fiscal_month,   label: Fiscal month}
+      - {name: fiscal_quarter, column: fiscal_quarter, label: Fiscal quarter}
+      - {name: fiscal_year,    column: fiscal_year,    label: Fiscal year}

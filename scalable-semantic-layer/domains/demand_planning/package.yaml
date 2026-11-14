@@ -1,0 +1,68 @@
+package: demand_planning
+version: 1.0.0
+status: certified
+owner: demand-planning-data@demo-co.com
+group: Planning
+description: Weekly statistical forecast versus actual demand by SKU and DC.
+
+concepts:
+  Forecast:
+    description: Weekly forecast and actual demand for one SKU at one DC.
+    fact: gold.fact_forecast_weekly
+    grain: [sku_id, location_id, week_start_key]
+    relations:
+      - {rel: for_product, to: Product,   key: sku_id,         level: sku}
+      - {rel: planned_for, to: Warehouse, key: location_id,    level: location}
+      - {rel: for_week,    to: Date,      key: week_start_key, level: fiscal_week}   # weekly grain
+    measures:
+      forecast_units:
+        expr: SUM(forecast_units)
+        additivity: additive
+        unit: units
+        category: Forecast
+        description: Final consensus forecast units.
+        synonyms: [forecast, forecasted units]
+      actual_demand_units:
+        expr: SUM(actual_units)
+        additivity: additive
+        unit: units
+        category: Forecast
+        description: Actual demand units used to measure forecast quality.
+        synonyms: [actual demand]
+      abs_error_units:
+        expr: SUM(ABS(forecast_units - actual_units))
+        additivity: additive
+        unit: units
+        category: Forecast quality
+        description: Absolute forecast error in units.
+
+derived_metrics:
+  forecast_error_pct:
+    numerator: abs_error_units
+    denominator: actual_demand_units
+    unit: pct
+    category: Forecast quality
+    description: Weighted absolute percentage error (WMAPE).
+    synonyms: [WMAPE, forecast error]
+  forecast_accuracy:
+    numerator: abs_error_units
+    denominator: actual_demand_units
+    one_minus: true
+    unit: pct
+    category: Forecast quality
+    description: Forecast accuracy, defined as 1 minus WMAPE.
+    synonyms: [FA, forecast accuracy pct]
+
+business_rules:
+  - Forecast is weekly; it cannot be shown by day. A week belongs to the fiscal month in which it starts.
+
+golden_questions:
+  - question: Forecast accuracy by region by month
+    request: {metrics: [forecast_accuracy], by: [location.region, calendar.fiscal_month]}
+    expect: {legs: 1}
+  - question: Forecast accuracy by category
+    request: {metrics: [forecast accuracy], by: [product.category]}
+    expect: {legs: 1}
+  - question: Forecast by day is refused
+    request: {metrics: [forecast_units], by: [calendar.day]}
+    expect: {error: level_too_fine}

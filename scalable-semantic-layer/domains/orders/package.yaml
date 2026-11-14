@@ -1,0 +1,63 @@
+package: orders
+version: 1.0.0
+status: certified
+owner: orders-data@demo-co.com
+group: Commercial
+description: Confirmed customer order lines.
+
+concepts:
+  Order:
+    description: One confirmed customer order line.
+    fact: gold.fact_order_line
+    grain: [order_line_id]
+    relations:                          # ONTOLOGY edges, each bound to a physical key
+      - {rel: for_product,    to: Product,   key: sku_id,                level: sku}
+      - {rel: placed_by,      to: Customer,  key: customer_id,           level: customer}
+      - {rel: fulfilled_from, to: Warehouse, key: ship_from_location_id, level: location}
+      - {rel: sold_through,   to: Channel,   key: channel_id,            level: channel}
+      - {rel: ordered_on,     to: Date,      key: order_date_key,        level: day}
+    measures:                           # TAXONOMY leaves: Commercial > orders > <category> > metric
+      order_units:
+        expr: SUM(order_qty)
+        additivity: additive
+        unit: units
+        category: Volume
+        description: Units ordered on confirmed order lines.
+        synonyms: [ordered units, order volume, order quantity]
+      order_value:
+        expr: SUM(order_qty * unit_price)
+        additivity: additive
+        unit: INR
+        category: Value
+        description: Order value at list price.
+        synonyms: [order revenue, booked value]
+      order_lines:
+        expr: COUNT(*)
+        additivity: additive
+        unit: lines
+        category: Volume
+        description: Number of confirmed order lines.
+
+derived_metrics:
+  avg_line_value:
+    numerator: order_value
+    denominator: order_lines
+    unit: INR
+    category: Value
+    description: Average value of an order line.
+    synonyms: [average order line value]
+
+business_rules:
+  - Orders means confirmed lines only; cancelled lines never reach the fact table.
+  - When a user says demand without qualification, prefer demand_planning.actual_demand_units for planning questions and order_units for commercial questions.
+
+golden_questions:
+  - question: Order units by region by month
+    request: {metrics: [order_units], by: [location.region, calendar.fiscal_month]}
+    expect: {legs: 1}
+  - question: Order value by channel group
+    request: {metrics: [order_value], by: [channel.channel_group]}
+    expect: {legs: 1}
+  - question: Breakdown of Snacks order units
+    request: {metrics: [order_units], breakdown: {of: product.category, member: Snacks}}
+    expect: {legs: 1}

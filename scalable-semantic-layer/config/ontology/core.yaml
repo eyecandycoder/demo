@@ -1,0 +1,11 @@
+# CORE ONTOLOGY
+# Business concepts every domain can relate to. Domain packages add their own concepts
+# (business events such as Order, Shipment) and relations, each BOUND to a physical key.
+concepts:
+  Product:   {entity: product,  description: A sellable SKU.}
+  Location:  {entity: location, description: A physical site.}
+  Warehouse: {is_a: Location, condition: "location_type = 'DC'",    description: Distribution centre.}
+  Plant:     {is_a: Location, condition: "location_type = 'PLANT'", description: Manufacturing plant.}
+  Customer:  {entity: customer, description: A ship-to customer.}
+  Channel:   {entity: channel,  description: A route to market.}
+  Date:      {entity: calendar, description: A fiscal calendar day.}
