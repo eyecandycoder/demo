@@ -1,5 +1,5 @@
 # Platform-level settings. Owned by the platform team, not by domains.
-catalog: sc_demo            # Unity Catalog catalog (ignored by the local SQLite runner)
+catalog: workspace            # Unity Catalog catalog (ignored by the local SQLite runner)            # Unity Catalog catalog (ignored by the local SQLite runner)
 schemas:
   gold: gold                # conformed dimensions + domain facts
   semantic: semantic        # generated metric views + helper views
