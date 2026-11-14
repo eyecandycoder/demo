@@ -1,0 +1,41 @@
+# Place at the REPO ROOT: .github/workflows/semantic-layer-ci.yml
+# The project lives in the scalable-semantic-layer/ subfolder, so every step runs there.
+name: semantic-layer-ci
+on:
+  pull_request:
+    paths: ["scalable-semantic-layer/**"]
+  push:
+    branches: [main]
+    paths: ["scalable-semantic-layer/**"]
+
+defaults:
+  run:
+    working-directory: scalable-semantic-layer
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: "3.11"}
+      - run: pip install -r requirements.txt
+      - name: Static checks (names, ontology, additivity, golden questions)
+        run: python -m semantic_layer.cli --include-incoming validate
+      - name: Unit tests (no fan-out, snapshot logic, refusals, determinism)
+        run: python -m unittest discover -s tests -v
+      - name: End-to-end on SQLite (data checks + golden questions)
+        run: python -m semantic_layer.cli --include-incoming local-deploy --db ci.db
+
+  deploy:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: validate
+    runs-on: ubuntu-latest
+    env:
+      DATABRICKS_HOST: ${{ secrets.DATABRICKS_HOST }}
+      DATABRICKS_TOKEN: ${{ secrets.DATABRICKS_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: databricks/setup-cli@main
+      - run: databricks bundle deploy -t prod
+      - run: databricks bundle run deploy_semantic_layer -t prod
