@@ -52,8 +52,8 @@ class SqliteRunner:
         if not cols:
             return
         self.conn.execute(f'DROP TABLE IF EXISTS "{physical}"')
-                   col_list = ", ".join('"' + c + '"' for c in cols)
-           self.conn.execute(f'CREATE TABLE "{physical}" ({col_list})')
+        col_list = ", ".join('"' + c + '"' for c in cols)
+        self.conn.execute(f'CREATE TABLE "{physical}" ({col_list})')
         self.conn.executemany(
             f'INSERT INTO "{physical}" VALUES ({", ".join("?" for _ in cols)})',
             [tuple(r.get(c) for c in cols) for r in rows],
