@@ -8,12 +8,19 @@ resources:
     deploy_semantic_layer:
       name: deploy-semantic-layer
       tasks:
+        - task_key: setup
+          notebook_task:
+            notebook_path: ./notebooks/00_setup.py
+        - task_key: load_demo_data
+          depends_on: [{task_key: setup}]
+          notebook_task:
+            notebook_path: ./notebooks/01_load_demo_data.py
         - task_key: deploy
+          depends_on: [{task_key: load_demo_data}]
           notebook_task:
             notebook_path: ./notebooks/02_deploy_semantic_layer.py
             base_parameters:
               domain_dirs: domains
-
 targets:
   dev:
     mode: development
