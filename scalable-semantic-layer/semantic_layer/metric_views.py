@@ -45,8 +45,9 @@ def _q(s: str) -> str:
 
 
 def metric_view_yaml(model: SemanticModel, fc: FactConcept, names: TableNames) -> str:
-    lines = [f"version: {METRIC_VIEW_VERSION}", f"source: {names.physical(fc.fact)}",
-             f"comment: {_q(fc.description)}", "joins:"]
+    # Only fields Databricks accepts: version, source, joins, dimensions, measures, filter, ...
+    # (no 'comment' keys). Descriptions live in the registry tables instead.
+    lines = [f"version: {METRIC_VIEW_VERSION}", f"source: {names.physical(fc.fact)}", "joins:"]
     dims = []
     for r in fc.relations:
         if not (r.joinable and r.entity):
@@ -83,7 +84,7 @@ def metric_view_yaml(model: SemanticModel, fc: FactConcept, names: TableNames) -
             expr = f"1 - {expr}"
         lines += [f"  - name: {d.name}", f"    expr: {expr}"]
     if skipped:
-        lines.insert(3, f"# snapshot measures served by the compiler, not this view: {', '.join(skipped)}")
+        lines.insert(2, f"# snapshot measures served by the compiler, not this view: {', '.join(skipped)}")
     return "\n".join(lines)
 
 
@@ -98,4 +99,3 @@ def all_ddl(model: SemanticModel, names: TableNames) -> list[tuple[str, str]]:
     for fc in model.fact_concepts().values():
         out.append((f"semantic.mv_{fc.domain}_{fc.name.lower()}", metric_view_ddl(model, fc, names)))
     return out
-    
