@@ -62,7 +62,7 @@ def metric_view_yaml(model: SemanticModel, fc: FactConcept, names: TableNames) -
             dims.append((f"{ent.name}_{lv.name}", f"{r.entity}.{lv.column}", f"{lv.label} ({r.rel} {r.to})"))
     lines.append("dimensions:")
     for name, expr, comment in dims:
-        lines += [f"  - name: {name}", f"    expr: {expr}", f"    comment: {_q(comment)}"]
+        lines += [f"  - name: {name}", f"    expr: {expr}"]
     lines.append("measures:")
     pkg = model.packages[fc.domain]
     skipped = []
@@ -70,7 +70,7 @@ def metric_view_yaml(model: SemanticModel, fc: FactConcept, names: TableNames) -
         if m.additivity == "semi_additive":
             skipped.append(m.name)
             continue
-        lines += [f"  - name: {m.name}", f"    expr: {m.expr}", f"    comment: {_q(m.description)}"]
+        lines += [f"  - name: {m.name}", f"    expr: {m.expr}"]
     for d in pkg.derived.values():
         if d.concept != fc.name:
             continue
@@ -81,7 +81,7 @@ def metric_view_yaml(model: SemanticModel, fc: FactConcept, names: TableNames) -
         expr = f"{num.expr} / NULLIF({den.expr}, 0)"
         if d.one_minus:
             expr = f"1 - {expr}"
-        lines += [f"  - name: {d.name}", f"    expr: {expr}", f"    comment: {_q(d.description)}"]
+        lines += [f"  - name: {d.name}", f"    expr: {expr}"]
     if skipped:
         lines.insert(3, f"# snapshot measures served by the compiler, not this view: {', '.join(skipped)}")
     return "\n".join(lines)
@@ -98,3 +98,4 @@ def all_ddl(model: SemanticModel, names: TableNames) -> list[tuple[str, str]]:
     for fc in model.fact_concepts().values():
         out.append((f"semantic.mv_{fc.domain}_{fc.name.lower()}", metric_view_ddl(model, fc, names)))
     return out
+    
